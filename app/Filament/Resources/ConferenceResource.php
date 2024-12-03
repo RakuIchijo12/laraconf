@@ -33,7 +33,8 @@ class ConferenceResource extends Resource
                     ->label('Conference')
                     ->default('My Conference')
                     ->helperText(text:'The name of the conference')
-                    ->maxLength(60),
+                    ->maxLength(60)
+                    ->required(),
                 Forms\Components\MarkdownEditor::make('description')
                     ->helperText('Hello')
                     ->required(),
@@ -54,38 +55,27 @@ class ConferenceResource extends Resource
                         'archived' => 'Archived',
                     ])
                     ->required(),
-                Forms\Components\Select::make('region')
+                    Forms\Components\Select::make('region')
                     ->live()
                     ->enum(Region::class)
                     ->options(Region::class)
-                    ->required(),
-                Forms\Components\Select::make('venue_id')
+                    ->required()
+                    ->reactive() // Make the field reactive
+                    ->afterStateUpdated(function (callable $set) {
+                        // Clear the venue_id when region changes
+                        $set('venue_id', null);
+                    }),
+                    Forms\Components\Select::make('venue_id')
                     ->searchable()
                     ->preload()
-                    ->editOptionForm([
-            
-                        TextInput::make('name')
-                            ->required()
-                            ->maxLength(255),
-                        TextInput::make('city')
-                            ->required()
-                            ->maxLength(255),
-                        TextInput::make('country')
-                            ->required()
-                            ->maxLength(255),
-                        TextInput::make('postal_code')
-                            ->required()
-                            ->maxLength(255),
-                        Select::make('region')
-                            ->enum(Region::class)
-                            ->options(Region::class)
-                            ->required(),
-                    
-                ])
-                    ->relationship('venue', 'name', modifyQueryUsing: function (Builder $query, Forms\Get $get){
+                    ->createOptionForm(Venue::getForm())
+                    ->editOptionForm(Venue::getForm())
+                    ->relationship('venue', 'name', modifyQueryUsing: function (Builder $query, Forms\Get $get) {
+                        // Filter venues by the selected region
                         return $query->where('region', $get('region'));
-                    }),
-            ]);
+                    })
+                    ->required(),
+                    ]);
     }
 
     public static function table(Table $table): Table
