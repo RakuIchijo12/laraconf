@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Conference;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -11,14 +12,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('speakers', function (Blueprint $table) {
+        Schema::create('attendees', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->text('avatar')->nullable();
             $table->string('email');
-            $table->string('qualifications')->nullable();
-            $table->text('bio')->nullable();
-            $table->string('twitter_handle')->nullable();
+            $table->integer('ticket-cost');
+            $table->boolean('is_paid');
+            $table->foreignIdFor(Conference::class);
             $table->timestamps();
         });
     }
@@ -28,6 +28,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('speakers');
+        Schema::dropIfExists('attendees');
     }
 };

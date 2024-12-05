@@ -10,4 +10,9 @@ class CreateConference extends CreateRecord
 {
     protected static string $resource = ConferenceResource::class;
     
+    protected function getRedirectUrl(): string
+    {
+        // Redirect to the index page of VenueResource
+        return $this->getResource()::getUrl('index');
+    }
 }
