@@ -80,6 +80,7 @@ class PatientRegistration extends Page implements Forms\Contracts\HasForms
     {
         $data = $this->form->getState();
 
+        # Validate senior citizen classification against age
         $age = (int) Carbon::parse($data['birthdate'])->diffInYears(now());
 
         if (
@@ -97,6 +98,7 @@ class PatientRegistration extends Page implements Forms\Contracts\HasForms
             ]);
         }
 
+        # Check for duplicate patient based on name and birthdate
         $exists = Patient::where('name', $data['name'])
             ->where('birthdate', $data['birthdate'])
             ->exists();
@@ -113,6 +115,7 @@ class PatientRegistration extends Page implements Forms\Contracts\HasForms
             ]);
         }
 
+        # Create the patient record
         Patient::create($data);
 
         $this->form->fill();
