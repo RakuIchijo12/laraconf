@@ -28,6 +28,7 @@ class Patient extends Model
         return $this->hasMany(Transaction::class);
     }
 
+    # Accessor to compute discount rate based on classification and age
     public function getDiscountRateAttribute(): float
     {
         $age = (int) Carbon::parse($this->birthdate)->diffInYears(now());
@@ -54,9 +55,10 @@ class Patient extends Model
         return count($discounts) > 0 ? max($discounts) : 0;
     }
 
-    public function getAgeDisplayAttribute(): string
+    # Method to compute age display in years, months, or days
+    public static function computeAgeDisplay(string $birthdate): string
     {
-        $birthdate = Carbon::parse($this->birthdate);
+        $birthdate = Carbon::parse($birthdate);
         $now = Carbon::now();
 
         if ($birthdate->isFuture()) {
@@ -64,20 +66,22 @@ class Patient extends Model
         }
 
         $years = (int) $birthdate->diffInYears($now);
-
         if ($years >= 1) {
             return $years . ' year' . ($years > 1 ? 's' : '');
         }
 
         $months = (int) $birthdate->diffInMonths($now);
-
         if ($months >= 1) {
             return $months . ' month' . ($months > 1 ? 's' : '');
         }
 
         $days = (int) $birthdate->diffInDays($now);
-
         return $days === 0 ? '0' : $days . ' day' . ($days > 1 ? 's' : '');
+    }
+    
+    public function getAgeDisplayAttribute(): string
+    {
+        return self::computeAgeDisplay($this->birthdate);
     }
 
 }

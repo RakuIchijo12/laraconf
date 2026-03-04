@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Enums\ClassificationEnum;
 use App\Filament\Resources\PatientResource\Pages;
 use App\Models\Patient;
 use Carbon\Carbon;
@@ -41,28 +42,7 @@ class PatientResource extends Resource
                             ->maxDate(today())
                             ->afterStateUpdated(function ($state, callable $set) {
                                 if ($state) {
-                                    $birthdate = Carbon::parse($state);
-                                    $now = Carbon::now();
-
-                                    if ($birthdate->isFuture()) {
-                                        $set('age_display', '0');
-                                        return;
-                                    }
-
-                                    $years = (int) $birthdate->diffInYears($now);
-                                    if ($years >= 1) {
-                                        $set('age_display', $years . ' year' . ($years > 1 ? 's' : ''));
-                                        return;
-                                    }
-
-                                    $months = (int) $birthdate->diffInMonths($now);
-                                    if ($months >= 1) {
-                                        $set('age_display', $months . ' month' . ($months > 1 ? 's' : ''));
-                                        return;
-                                    }
-
-                                    $days = (int) $birthdate->diffInDays($now);
-                                    $set('age_display', $days === 0 ? '0' : $days . ' day' . ($days > 1 ? 's' : ''));
+                                    $set('age_display', Patient::computeAgeDisplay($state));
                                 }
                             }),
 
@@ -90,12 +70,7 @@ class PatientResource extends Resource
                 Forms\Components\Select::make('classification')
                     ->searchable()
                     ->multiple()
-                    ->options([
-                        'senior-citizen'        => 'Senior Citizen',
-                        'person-with-disability' => 'Person with Disability',
-                        'employee'              => 'Employee',
-                        'dependent'             => 'Dependent',
-                    ])
+                    ->options(ClassificationEnum::toArray())
                     ->required(),
             ]);
     }
@@ -107,7 +82,9 @@ class PatientResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('ref_id')
                     ->label('Reference ID')
-                    ->searchable(),
+                    ->searchable()
+                    ->badge()
+                    ->color('primary'),
                 Tables\Columns\TextColumn::make('name')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('birthdate')
@@ -120,8 +97,16 @@ class PatientResource extends Resource
                     ->searchable()
                     ->formatStateUsing(fn ($state) => ucfirst($state)),
                 Tables\Columns\TextColumn::make('classification')
-                    ->searchable()
-                    ->formatStateUsing(fn ($state) => ucwords(str_replace('-', ' ', $state))),
+                    ->html()
+                    ->getStateUsing(function ($record) {
+                        $classifications = $record->classification ?? [];
+                        if (is_string($classifications)) {
+                            $classifications = json_decode($classifications, true) ?? [];
+                        }
+                        return collect($classifications)
+                            ->map(fn ($s) => ucwords(str_replace('-', ' ', $s)))
+                            ->join('<br>');
+                    }),
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Registered At')
                     ->dateTime('F j, Y g:i A'),

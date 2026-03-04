@@ -51,7 +51,7 @@ class TransactionEntry extends Page implements Forms\Contracts\HasForms
                 ->searchable()
                 ->required()
                 ->live()
-                ->afterStateUpdated(function ($state, callable $set) {
+                ->afterStateUpdated(function (callable $set) {
                     $this->recalculate($set);
                 }),
 
@@ -79,9 +79,11 @@ class TransactionEntry extends Page implements Forms\Contracts\HasForms
                             $patient = Patient::find($get('patient_id'));
                             if (!$patient) return '—';
                             $classifications = $patient->classification ?? [];
-                            return collect($classifications)
-                                ->map(fn ($s) => ucwords(str_replace('-', ' ', $s)))
-                                ->join(', ');
+                            return new \Illuminate\Support\HtmlString(
+                                collect($classifications)
+                                    ->map(fn ($s) => '• ' . ucwords(str_replace('-', ' ', $s)))
+                                    ->join('<br>')
+                            );
                         }),
 
                     Forms\Components\Placeholder::make('patient_discount')
@@ -89,7 +91,7 @@ class TransactionEntry extends Page implements Forms\Contracts\HasForms
                         ->content(function (callable $get) {
                             $patient = Patient::find($get('patient_id'));
                             if (!$patient) return '—';
-                            return $patient->discount_rate . '%';
+                            return (int) $patient->discount_rate . '%'; 
                         }),
                 ])
                 ->columns(4)
@@ -116,6 +118,8 @@ class TransactionEntry extends Page implements Forms\Contracts\HasForms
                                         ->required()
                                         ->numeric()
                                         ->prefix('₱')
+                                        ->step(0.01)
+                                        ->inputMode('decimal')
                                         ->minValue(0),
                                 ])
                                 ->createOptionUsing(function (array $data) {
@@ -139,7 +143,7 @@ class TransactionEntry extends Page implements Forms\Contracts\HasForms
                                     ];
                                 })
                                 ->editOptionAction(function (Forms\Components\Actions\Action $action) {
-                                    return $action->action(function (array $data, array $arguments, $state) {
+                                    return $action->action(function (array $data, $state) {
                                         $item = Item::find($state);
                                         if ($item) {
                                             $item->update($data);
@@ -168,7 +172,7 @@ class TransactionEntry extends Page implements Forms\Contracts\HasForms
                                     $set('subtotal', $price * (int) ($state ?? 1));
                                     $this->recalculate($set);
                                 }),
-                                
+
                             Forms\Components\Placeholder::make('unit_price')
                                 ->label('Unit Price')
                                 ->content(fn (callable $get) => $get('unit_price') ? '₱ ' . number_format((float) $get('unit_price'), 2) : '—'),
@@ -215,10 +219,13 @@ class TransactionEntry extends Page implements Forms\Contracts\HasForms
         $items = $this->data['transaction_items'] ?? [];
         $patientId = $this->data['patient_id'] ?? null;
 
+        #sum up gross amount
         $gross = collect($items)->sum(function ($row) {
-            return (float) ($row['unit_price'] ?? 0) * (int) ($row['quantity'] ?? 1);
+            $item = Item::find($row['item_id'] ?? null);
+            return (float) ($item?->price ?? 0) * (int) ($row['quantity'] ?? 1);
         });
 
+        #discount rate based on patient classification
         $discountRate = 0;
         if ($patientId) {
             $patient = Patient::find($patientId);
@@ -227,6 +234,7 @@ class TransactionEntry extends Page implements Forms\Contracts\HasForms
             }
         }
 
+        #calculate discount amount and total
         $discountAmount = $gross * ($discountRate / 100);
         $total = $gross - $discountAmount;
 
@@ -239,6 +247,7 @@ class TransactionEntry extends Page implements Forms\Contracts\HasForms
     {
         $data = $this->form->getState();
 
+        # Validate that at least one item has been added
         if (empty($data['transaction_items'])) {
             Notification::make()
                 ->title('No items added')
@@ -253,11 +262,18 @@ class TransactionEntry extends Page implements Forms\Contracts\HasForms
 
         $patient = Patient::findOrFail($data['patient_id']);
 
-        $gross = collect($data['transaction_items'])->sum(fn ($row) => (float) ($row['unit_price'] ?? 0) * (int) ($row['quantity'] ?? 1));
-        $discountRate = $patient->discount_rate;
+        # Recalculate amounts to ensure data integrity
+        $gross = collect($data['transaction_items'])->sum(function ($row) {
+            $item = Item::find($row['item_id']);
+            return (float) ($item?->price ?? 0) * (int) ($row['quantity'] ?? 1);
+        });
+
+        # Get discount rate from patient classification
+        $discountRate = (int) $patient->discount_rate;
         $discountAmount = $gross * ($discountRate / 100);
         $total = $gross - $discountAmount;
 
+        # Create the transaction
         $transaction = Transaction::create([
             'patient_id'      => $patient->id,
             'gross_amount'    => round($gross, 2),
@@ -266,17 +282,19 @@ class TransactionEntry extends Page implements Forms\Contracts\HasForms
             'total_amount'    => round($total, 2),
         ]);
 
+        # Create transaction items
         foreach ($data['transaction_items'] as $row) {
             $item = Item::findOrFail($row['item_id']);
             TransactionItem::create([
                 'transaction_id' => $transaction->id,
                 'item_id'        => $item->id,
-                'quantity'       => $row['quantity'],
-                'unit_price'     => $item->price,
-                'subtotal'       => round($item->price * $row['quantity'], 2),
+                'quantity'       => (int) $row['quantity'],
+                'unit_price'     => (float) $item->price,
+                'subtotal'       => round((float) $item->price * (int) $row['quantity'], 2),
             ]);
         }
 
+        # Reset the form after submission
         $this->form->fill();
 
         Notification::make()

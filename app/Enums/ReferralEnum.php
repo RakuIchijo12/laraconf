@@ -5,9 +5,10 @@ namespace App\Enums;
 
 enum ReferralEnum: string
 {
-    case PENDING = 'pending';
-    case APPROVED = 'approved';
-    case REJECTED = 'rejected';
+    case SENIORCITIZEN        = 'senior-citizen';
+    case PERSONWITHDISABI = 'person-with-disability';
+    case Employee             = 'employee';
+    case Dependent            = 'dependent';
 
     public static function toArray(): array
     {

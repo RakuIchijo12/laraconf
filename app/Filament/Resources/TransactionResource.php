@@ -30,7 +30,9 @@ class TransactionResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('transaction_id')
                     ->label('ID')
-                    ->searchable(),
+                    ->searchable()
+                    ->color('primary')
+                    ->badge(),
 
                 Tables\Columns\TextColumn::make('patient.name')
                     ->label('Patient')
@@ -51,7 +53,7 @@ class TransactionResource extends Resource
 
                 Tables\Columns\TextColumn::make('discount_rate')
                     ->label('Discount Rate')
-                    ->formatStateUsing(fn ($state) => $state . '%'),
+                    ->formatStateUsing(fn ($state) => (int) $state . '%'),
 
                 Tables\Columns\TextColumn::make('gross_amount')
                     ->label('Gross Amount')
@@ -66,7 +68,7 @@ class TransactionResource extends Resource
                     ->formatStateUsing(fn ($state) => '₱ ' . number_format($state, 2)),
 
                 Tables\Columns\TextColumn::make('created_at')
-                    ->label('Date')
+                    ->label('Created At')
                     ->dateTime('F j, Y g:i A'),
             ])
             ->defaultSort('created_at', 'desc')

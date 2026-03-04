@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Enums\ClassificationEnum;
 use Filament\Forms;
 use Filament\Pages\Page;
 use App\Models\Patient;
@@ -47,35 +48,11 @@ class PatientRegistration extends Page implements Forms\Contracts\HasForms
                         ->displayFormat('m/d/Y')
                         ->required()
                         ->live()
-                        ->default('2001-06-22')
+                        ->default(today()->subYears(20))
                         ->maxDate(today())
                         ->afterStateUpdated(function ($state, callable $set) {
                             if ($state) {
-                                $birthdate = Carbon::parse($state);
-                                $now = Carbon::now();
-
-                                if ($birthdate->isFuture()) {
-                                    $set('age_display', '0 days');
-                                    return;
-                                }
-
-                                $years = (int) $birthdate->diffInYears($now);
-
-                                if ($years >= 1) {
-                                    $set('age_display', $years . ' year' . ($years > 1 ? 's' : ''));
-                                    return;
-                                }
-
-                                $months = (int) $birthdate->diffInMonths($now);
-
-                                if ($months >= 1) {
-                                    $set('age_display', $months . ' month' . ($months > 1 ? 's' : ''));
-                                    return;
-                                }
-
-                                $days = (int) $birthdate->diffInDays($now);
-
-                                $set('age_display', $days === 0 ? '0' : $days . ' day' . ($days > 1 ? 's' : ''));
+                                $set('age_display', Patient::computeAgeDisplay($state));
                             }
                         }),
 
@@ -94,12 +71,7 @@ class PatientRegistration extends Page implements Forms\Contracts\HasForms
             
             Forms\Components\Select::make('classification')
                 ->multiple()
-                ->options([
-                    'senior-citizen'         => 'Senior Citizen (20%)',
-                    'person-with-disability' => 'Person with Disability (20%)',
-                    'employee'               => 'Employee (100%)',
-                    'dependent'              => 'Dependent (25%)',
-                ])
+                ->options(ClassificationEnum::toArray())
                 ->required(),
         ];
     }
@@ -150,5 +122,7 @@ class PatientRegistration extends Page implements Forms\Contracts\HasForms
             ->body('The patient has been added to the system.')
             ->success()
             ->send();
+            
+        $this->redirect(\App\Filament\Pages\TransactionEntry::getUrl());
     }
 }
