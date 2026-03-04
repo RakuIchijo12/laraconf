@@ -17,49 +17,64 @@ class PatientResource extends Resource
 {
     protected static ?string $model = Patient::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
-
+    protected static ?string $navigationIcon = 'heroicon-o-user';
+    // protected static bool $shouldRegisterNavigation = false;
+    protected static ?string $navigationParentItem = 'Patient Registration';
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
-                Forms\Components\Section::make('Patient Information')
-                    ->schema([
-                        Forms\Components\TextInput::make('first_name')
-                            ->required(),
+                // Forms\Components\Section::make('Patient Information')
+                //     ->schema([
+                //         Forms\Components\TextInput::make('name')
+                //             ->required(),
 
-                        Forms\Components\TextInput::make('last_name')
-                            ->required(),
+                //         Forms\Components\DatePicker::make('birthdate')
+                //             ->native(false)
+                //             ->required()
+                //             ->maxDate(now()->subDay()),
 
-                        Forms\Components\DatePicker::make('date_of_birth')
-                            ->required(),
-
-                        Forms\Components\TextInput::make('email')
-                            ->email()
-                            ->required(),
+                //         Forms\Components\TextInput::make('sex')
+                //             ->email()
+                //             ->required(),
                         
-                        Forms\Components\TextInput::make('contact_number')
-                            ->required(),
-                    ]),
+                //     ]),
             ]);
     }
 
     public static function table(Table $table): Table
     {
         return $table
+            ->recordAction(null)
+            ->recordUrl(false)
+            ->striped()
             ->columns([
-                //
+                Tables\Columns\TextColumn::make('ref_id')
+                    ->label('Reference ID')
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('name')
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('birthdate')
+                    ->searchable()
+                    ->date(),
+                Tables\Columns\TextColumn::make('age_display')
+                    ->label('Age')
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('sex')
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('classification')
+                    ->searchable()
+                    ->formatStateUsing(function ($state) {
+                        return ucwords(str_replace('-', ' ', $state));
+                    }),
+                Tables\Columns\TextColumn::make('created_at')
+                    ->label('Registered At')
+                    ->dateTime( 'F j, Y g:i A'),
             ])
             ->filters([
                 //
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
             ]);
     }
 
