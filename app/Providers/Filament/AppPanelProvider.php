@@ -3,6 +3,7 @@
 namespace App\Providers\Filament;
 
 use App\Filament\Pages\PatientRegistration;
+use App\Filament\Pages\TransactionEntry;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
@@ -39,6 +40,7 @@ class AppPanelProvider extends PanelProvider
             ->pages([
                 Pages\Dashboard::class,
                 PatientRegistration::class,
+                TransactionEntry::class,
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([

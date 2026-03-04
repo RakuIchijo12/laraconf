@@ -11,11 +11,47 @@ class Patient extends Model
 {
     use HasFactory;
 
+    protected $fillable = ['ref_id', 'name', 'birthdate', 'sex', 'classification'];
+    protected $casts = [
+        'classification' => 'array',
+    ];
+
     protected static function booted()
     {
         static::creating(function ($patient) {
             $patient->ref_id = 'PAT-' . strtoupper(uniqid());
         });
+    }
+
+    public function transactions(): HasMany
+    {
+        return $this->hasMany(Transaction::class);
+    }
+
+    public function getDiscountRateAttribute(): float
+    {
+        $age = (int) Carbon::parse($this->birthdate)->diffInYears(now());
+        $classifications = $this->classification ?? [];
+
+        $discounts = [];
+
+        if ($age >= 60 || in_array('senior-citizen', $classifications)) {
+            $discounts[] = 20;
+        }
+
+        if (in_array('person-with-disability', $classifications)) {
+            $discounts[] = 20;
+        }
+
+        if (in_array('employee', $classifications)) {
+            $discounts[] = 100;
+        }
+
+        if (in_array('dependent', $classifications)) {
+            $discounts[] = 25;
+        }
+
+        return count($discounts) > 0 ? max($discounts) : 0;
     }
 
     public function getAgeDisplayAttribute(): string
@@ -24,7 +60,7 @@ class Patient extends Model
         $now = Carbon::now();
 
         if ($birthdate->isFuture()) {
-            return '0 days';
+            return '0';
         }
 
         $years = (int) $birthdate->diffInYears($now);

@@ -44,8 +44,10 @@ class PatientRegistration extends Page implements Forms\Contracts\HasForms
                 ->schema([
                     Forms\Components\DatePicker::make('birthdate')
                         ->native(false)
+                        ->displayFormat('m/d/Y')
                         ->required()
                         ->live()
+                        ->default('2001-06-22')
                         ->maxDate(today())
                         ->afterStateUpdated(function ($state, callable $set) {
                             if ($state) {
@@ -91,11 +93,12 @@ class PatientRegistration extends Page implements Forms\Contracts\HasForms
                 ->required(),
             
             Forms\Components\Select::make('classification')
+                ->multiple()
                 ->options([
-                    'senior-citizen' => 'Senior Citizen',
-                    'person-with-disability' => 'Person with Disability',
-                    'employee' => 'Employee',
-                    'dependent' => 'Dependent',
+                    'senior-citizen'         => 'Senior Citizen (20%)',
+                    'person-with-disability' => 'Person with Disability (20%)',
+                    'employee'               => 'Employee (100%)',
+                    'dependent'              => 'Dependent (25%)',
                 ])
                 ->required(),
         ];
@@ -105,18 +108,20 @@ class PatientRegistration extends Page implements Forms\Contracts\HasForms
     {
         $data = $this->form->getState();
 
+        $age = (int) Carbon::parse($data['birthdate'])->diffInYears(now());
+
         if (
-            ($data['classification'] ?? null) === 'senior-citizen' &&
-            $data['age'] < 60
+            in_array('senior-citizen', $data['classification'] ?? []) &&
+            $age < 60
         ) {
             Notification::make()
                 ->title('Registration failed')
-                ->body('Senior citizens must be 60 years old or above to register under Senior Citizen classification.')
+                ->body('Senior citizens must be 60 years old or above.')
                 ->danger()
                 ->send();
 
             throw ValidationException::withMessages([
-                'age' => 'Senior citizens must be 60 years old or above.',
+                'data.birthdate' => 'Senior citizens must be 60 years old or above.',
             ]);
         }
 
@@ -132,7 +137,7 @@ class PatientRegistration extends Page implements Forms\Contracts\HasForms
                 ->send();
 
             throw ValidationException::withMessages([
-                'name' => 'Patient already exists.',
+                'data.name' => 'Patient already exists.',
             ]);
         }
 
@@ -142,6 +147,7 @@ class PatientRegistration extends Page implements Forms\Contracts\HasForms
 
         Notification::make()
             ->title('Patient registered successfully!')
+            ->body('The patient has been added to the system.')
             ->success()
             ->send();
     }
